@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Retro Game</title>
+</head>
+<body>
+    <style>
+        h1 {
+            padding-left: 15px;
+            margin: 0;
+        }
+        li {
+            list-style: none;
+        }
+        ul {
+            padding-left: 15px;
+            margin-top: 10px;
+            font-family: sans-serif;
+            font-size: 25px;
+        }
+        .game {
+            padding-top: 30px;
+            display: flex;
+            justify-content: flex-start;
+            padding-left: 100px;
+        }
+        html {
+            background-color: tomato;
+        }
+        canvas {
+            border: 5px solid black;
+            background-color: aliceblue;
+        }
+
+    </style>
+    <div>
+    </div>
+    <div class="game">
+        <div>
+            <canvas id="canvas" width="500" height="500"></canvas>
+        </div>
+        <div>
+            <h1>Jogadores</h1>
+            <ul class="points"></ul>
+        </div>        
+    </div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+        let socket = io();
+
+        let isReady = false;
+
+        let playerName = "";
+
+        let timeout = false;
+
+        const verticalValues = [0,25,50,75,100,125,150,175,200,225,250,275,300,325,350,375,400,425,450,475];
+        const horizontalValues = [0,25,50,75,100,125,150,175,200,225,250,275,300,325,350,375,400,425,450,475];
+
+        let ctx;
+
+        let velocity = 25;
+
+        let pointTime = 2000;
+
+        const randomVertical = () => verticalValues[ Math.floor(Math.random() * 20)]
+
+        const randomHorizontal = () => horizontalValues[Math.floor(Math.random() * 20)]
+
+        let interval;
+
+        let players = [];
+        let oldPlayers = [];
+
+        let points = [];
+
+        let pointsQuantity = 1;
+
+        window.onpageshow = () => {
+            playerName  = prompt("Digite o seu nome");
+            players.push({ x: randomVertical(), y: randomHorizontal(), w: 25, h: 25, color: "red", points: 0, name: playerName })
+            const myPlayer = players.findIndex(player => player.name === playerName);
+            socket.emit("loginEmit", players[myPlayer]);
+
+            initialize();
+        }
+
+        const initialize = () => {
+            if (isReady && !timeout) {
+                drawPlayers();
+                updatePlayers(); 
+                clearPlayers02();
+            }
+
+            requestAnimationFrame(initialize);
+        }
+
+        const drawPoints = () => {
+            ctx = canvas.getContext("2d");
+
+            points.forEach(point => {
+                ctx.fillStyle = "green";
+                ctx.fillRect(point.x, point.y, 25, 25);
+            });
+
+        };
+
+        const drawPlayers = () => {
+            ctx = canvas.getContext("2d");
+
+            players.forEach(player => {
+                ctx.fillStyle = player.name === playerName ? "red" : "yellow";
+                ctx.fillRect(player.x, player.y, player.h, player.w);
+
+                ctx.fillStyle = player.name === playerName ? "white" : "black";
+                ctx.font = "bold";
+                ctx.fillText(player.name.substr(0, 3).toUpperCase(), player.x + 1, player.y +15 , player.h, player.w);
+            });
+        }
+
+        const movePlayer = (player, direction) => {
+            if (timeout) {
+                return;
+            }
+
+            oldPlayers = JSON.parse(JSON.stringify(players));
+            socket.emit("clearPlayersEmit", points);
+
+            if (direction === "ArrowDown"  && player.y < 475) { player.y += velocity; }
+            if (direction === "ArrowRight" && player.x < 475) { player.x += velocity; }
+            if (direction === "ArrowUp"    && player.y > 0  ) { player.y -= velocity; }
+            if (direction === "ArrowLeft"  && player.x > 0  ) { player.x -= velocity; }    
+
+            checkHasPoint();
+        }
+
+        const clearPlayers = () => {
+            for (let i = 0; i < verticalValues.length; i++) {
+                for (let j = 0; j < horizontalValues.length; j++) {
+                    let hasPlayer = oldPlayers.some(player => player.x === horizontalValues[j] && player.y === verticalValues[i]);
+                    if(hasPlayer) {
+                        ctx.clearRect(horizontalValues[j], verticalValues[i], 25, 25);
+                    }
+
+                    hasPlayer = players.some(player => player.x === horizontalValues[j] && player.y === verticalValues[i]);
+                    if(hasPlayer) {
+                        ctx.clearRect(horizontalValues[j], verticalValues[i], 25, 25);
+                    }
+                }
+            }
+        };
+
+        const clearPlayers02 = () => {
+            for (let i = 0; i < verticalValues.length; i++) {
+                for (let j = 0; j < horizontalValues.length; j++) {
+
+                    let hasPlayer = players.some(player => player.x === horizontalValues[j] && player.y === verticalValues[i]);
+                    let hasPoint = points.some(player => player.x === horizontalValues[j] && player.y === verticalValues[i]);
+                    if(!hasPlayer && !hasPoint) {
+                        ctx.clearRect(horizontalValues[j], verticalValues[i], 25, 25);
+                    }
+                }
+            }
+        };
+
+        const checkHasPoint = () => {
+            const myPlayer = players.findIndex(player => player.name === playerName);
+            const index = points.findIndex(point => point.x === players[myPlayer].x && point.y === players[myPlayer].y);
+            if (index > -1) {
+                console.log("+1")
+                points.splice(index, 1);
+                players[myPlayer].points += 1;
+                socket.emit("startEmit", pointsQuantity, points);
+            }
+
+            socket.emit("movePlayersEmit", players);
+        }
+
+        const updatePlayers = () => {
+            document.querySelector(".points").innerHTML = "";
+            const localPlayers = [...players];
+            
+            localPlayers.sort((a, b) => {
+                if(a.points < b.points) return 1;
+                if(a.points > b.points) return -1;
+                
+                return 0;
+            }).forEach(player => {
+                const li = document.createElement("li");
+                li.textContent = `${player.name}: ${player.points}`
+
+                document.querySelector(".points").appendChild(li)
+            });
+            
+        }
+
+        window.addEventListener("keyup", ({ key }) => {
+            const myPlayer = players.findIndex(player => player.name === playerName);
+            movePlayer(players[myPlayer], key);
+        });
+
+        socket.on("onMovePlayers", (allPlayers) => {
+            players = [...allPlayers];
+            drawPlayers();
+            updatePlayers();
+
+        });
+
+        socket.on("onAddUser", (allPlayers) => {
+            players = [...allPlayers];
+            drawPlayers();
+            updatePlayers();
+        });
+
+        socket.on("onDrawPoints", (allPoints) => {
+            points = [...allPoints];
+            drawPoints();
+        });
+
+        socket.on("onClearPlayers", () => {
+            clearPlayers();
+        });
+
+        socket.on("onStart", (allPoints) => {
+            isReady = true;
+            timeout = false;
+            players.forEach(player => player.points = 0);
+            if(isReady) {
+                points = allPoints;
+                drawPoints();
+            }
+        });
+
+        socket.on("onChangeQuantity", (quantity) => {
+            pointsQuantity = quantity;
+        });
+
+        socket.on("onTimeout", () => {
+            timeout = true;
+            alert("Fim de round");
+        });
+
+    </script>
+</body>
+</html>
