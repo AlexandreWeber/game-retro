@@ -43,7 +43,7 @@
             <canvas id="canvas" width="500" height="500"></canvas>
         </div>
         <div>
-            <h1>Jogadores</h1>
+            <h1>Jogadores:</h1>
             <ul class="points"></ul>
         </div>        
     </div>
@@ -70,6 +70,7 @@
         let oldPlayers = [];
         let points = [];
         let pointsQuantity = 1;
+        let isMoving = false;
 
         window.onpageshow = () => {
             playerName  = prompt("Digite o seu nome");
@@ -127,7 +128,7 @@
                 players[myPlayer].points += 1;
                 socket.emit("startEmit", pointsQuantity, points)
             }
-
+            isMoving = false;
             socket.emit("movePlayersEmit", players);
         }
 
@@ -150,6 +151,7 @@
         }
 
         window.addEventListener("keyup", ({ key }) => {
+            isMoving = true;
             const myPlayer = players.findIndex(player => player.name === playerName);
             movePlayer(players[myPlayer], key);
         });
