@@ -50,34 +50,25 @@
 
     <script src="/socket.io/socket.io.js"></script>
     <script>
-        let socket = io();
-
-        let isReady = false;
-
-        let playerName = "";
-
-        let timeout = false;
-
         const verticalValues = [0,25,50,75,100,125,150,175,200,225,250,275,300,325,350,375,400,425,450,475];
         const horizontalValues = [0,25,50,75,100,125,150,175,200,225,250,275,300,325,350,375,400,425,450,475];
 
-        let ctx;
-
-        let velocity = 25;
-
-        let pointTime = 2000;
-
         const randomVertical = () => verticalValues[ Math.floor(Math.random() * 20)]
-
         const randomHorizontal = () => horizontalValues[Math.floor(Math.random() * 20)]
 
-        let interval;
+        let socket = io();
+        let isReady = false;
+        let playerName = "";
+        let timeout = false;
 
+        let ctx = canvas.getContext("2d");
+        let velocity = 25;
+        let pointTime = 2000;
+
+        let interval;
         let players = [];
         let oldPlayers = [];
-
         let points = [];
-
         let pointsQuantity = 1;
 
         window.onpageshow = () => {
@@ -100,8 +91,6 @@
         }
 
         const drawPoints = () => {
-            ctx = canvas.getContext("2d");
-
             points.forEach(point => {
                 ctx.fillStyle = "green";
                 ctx.fillRect(point.x, point.y, 25, 25);
@@ -110,27 +99,16 @@
         };
 
         const drawPlayers = () => {
-            ctx = canvas.getContext("2d");
             ctx.clearRect(0, 0, 500, 500);
 
             players.forEach(player => {
-                drawPlayer(player);
+                ctx.fillStyle = player.name === playerName ? "red" : "yellow";;
+                ctx.fillRect(player.x, player.y, player.h, player.w);
             });
         }
 
-        const drawPlayer = (player) => {
-            ctx.fillStyle = player.name === playerName ? "red" : "yellow";;
-            ctx.fillRect(player.x, player.y, player.h, player.w);
-        }
-
         const movePlayer = (player, direction) => {
-            if (timeout) {
-                return;
-            }
-
-            const oldPlayer = { ...player};
-
-            oldPlayers = JSON.parse(JSON.stringify(players));
+            if (timeout) { return; }
 
             if (direction === "ArrowDown"  && player.y < 475) { player.y += velocity; }
             if (direction === "ArrowRight" && player.x < 475) { player.x += velocity; }
@@ -138,8 +116,6 @@
             if (direction === "ArrowLeft"  && player.x > 0  ) { player.x -= velocity; }    
 
             checkHasPoint();
-            
-            drawPlayer(player);
         }
 
         const checkHasPoint = () => {
@@ -149,7 +125,7 @@
                 console.log("+1")
                 points.splice(index, 1);
                 players[myPlayer].points += 1;
-                socket.emit("startEmit", pointsQuantity, points);
+                socket.emit("startEmit", pointsQuantity, points)
             }
 
             socket.emit("movePlayersEmit", players);
@@ -180,19 +156,14 @@
 
         socket.on("onMovePlayers", (allPlayers) => {
             players = [...allPlayers];
-            drawPlayers();
-            updatePlayers();
         });
 
         socket.on("onAddUser", (allPlayers) => {
             players = [...allPlayers];
-            drawPlayers();
-            updatePlayers();
         });
 
         socket.on("onDrawPoints", (allPoints) => {
             points = [...allPoints];
-            drawPoints();
         });
 
         socket.on("onStart", (allPoints) => {
@@ -201,7 +172,6 @@
             players.forEach(player => player.points = 0);
             if(isReady) {
                 points = allPoints;
-                drawPoints();
             }
         });
 
@@ -213,7 +183,6 @@
             timeout = true;
             alert("Fim de round");
         });
-
     </script>
 </body>
 </html>
