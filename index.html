@@ -112,20 +112,26 @@
         const drawPlayers = () => {
             ctx = canvas.getContext("2d");
 
-            players.forEach(player => {
-                ctx.fillStyle = player.name === playerName ? "red" : "yellow";
-                ctx.fillRect(player.x, player.y, player.h, player.w);
-
-                ctx.fillStyle = player.name === playerName ? "white" : "black";
-                ctx.font = "bold";
-                ctx.fillText(player.name.substr(0, 3).toUpperCase(), player.x + 1, player.y +15 , player.h, player.w);
+            players.filter(player => player.name !== playerName).forEach(player => {
+                drawPlayer(player);
             });
+        }
+
+        const drawPlayer = (player) => {
+            ctx.fillStyle = player.name === playerName ? "red" : "yellow";;
+            ctx.fillRect(player.x, player.y, player.h, player.w);
+
+            ctx.fillStyle = player.name === playerName ? "white" : "black";
+            ctx.font = "bold";
+            ctx.fillText(player.name.substr(0, 3).toUpperCase(), player.x + 1, player.y +15 , player.h, player.w);
         }
 
         const movePlayer = (player, direction) => {
             if (timeout) {
                 return;
             }
+
+            const oldPlayer = { ...player};
 
             oldPlayers = JSON.parse(JSON.stringify(players));
             socket.emit("clearPlayersEmit", points);
@@ -136,17 +142,20 @@
             if (direction === "ArrowLeft"  && player.x > 0  ) { player.x -= velocity; }    
 
             checkHasPoint();
+            
+            drawPlayer(player);
+            ctx.clearRect(oldPlayer.x, oldPlayer.y, 25, 25);
         }
 
         const clearPlayers = () => {
             for (let i = 0; i < verticalValues.length; i++) {
                 for (let j = 0; j < horizontalValues.length; j++) {
-                    let hasPlayer = oldPlayers.some(player => player.x === horizontalValues[j] && player.y === verticalValues[i]);
+                    let hasPlayer = oldPlayers.filter(p => p.name !== playerName).some(player => player.x === horizontalValues[j] && player.y === verticalValues[i]);
                     if(hasPlayer) {
                         ctx.clearRect(horizontalValues[j], verticalValues[i], 25, 25);
                     }
 
-                    hasPlayer = players.some(player => player.x === horizontalValues[j] && player.y === verticalValues[i]);
+                    hasPlayer = players.filter(p => p.name !== playerName).some(player => player.x === horizontalValues[j] && player.y === verticalValues[i]);
                     if(hasPlayer) {
                         ctx.clearRect(horizontalValues[j], verticalValues[i], 25, 25);
                     }
@@ -207,7 +216,6 @@
             players = [...allPlayers];
             drawPlayers();
             updatePlayers();
-
         });
 
         socket.on("onAddUser", (allPlayers) => {
