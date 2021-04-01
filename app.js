@@ -63,6 +63,6 @@ io.on("login", () => {
     console.log("aqui");
 })
 
-http.listen(3000, function(){
-    console.log('listening on port 3000');
+http.listen(process.env.PORT || 3000, function() {
+    console.log('listening on port ', process.env.PORT || 3000);
 });
