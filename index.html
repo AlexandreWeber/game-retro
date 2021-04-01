@@ -43,7 +43,7 @@
             <canvas id="canvas" width="500" height="500"></canvas>
         </div>
         <div>
-            <h1>Jogadores:</h1>
+            <h1>Jogadores</h1>
             <ul class="points"></ul>
         </div>        
     </div>
@@ -151,6 +151,8 @@
         }
 
         window.addEventListener("keyup", ({ key }) => {
+            if (isMoving) { return; } 
+            
             isMoving = true;
             const myPlayer = players.findIndex(player => player.name === playerName);
             movePlayer(players[myPlayer], key);
